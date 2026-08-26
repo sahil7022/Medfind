@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from 'firebase/auth';
 import { SplashScreen } from './components/SplashScreen';
+import { LocationModal } from './components/LocationModal';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { PharmacyCard } from './components/PharmacyCard';
@@ -55,12 +56,15 @@ export const App: React.FC = () => {
     loadData();
   }, []);
 
-  const handleDetectLocation = async () => {
-    showToast('Detecting location via browser Geolocation API...');
-    const loc = await getCurrentUserLocation();
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  const handleDetectLocation = () => {
+    setIsLocationModalOpen(true);
+  };
+
+  const handleSelectLocation = async (loc: LocationCoordinates) => {
     setLocation(loc);
     await loadData(medicine, loc);
-    showToast(`Updated nearby stock for ${loc.city || 'your area'}`);
   };
 
   const handleSearch = async (query: string) => {
@@ -447,6 +451,15 @@ export const App: React.FC = () => {
         medicine={medicine}
         onClose={() => setSelectedPharmacy(null)}
         onConfirm={handleConfirmReservation}
+      />
+
+      {/* Google Maps Location Selector Modal */}
+      <LocationModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        currentLocation={location}
+        onSelectLocation={handleSelectLocation}
+        onToast={showToast}
       />
 
       {/* Animated Toast Notification */}
