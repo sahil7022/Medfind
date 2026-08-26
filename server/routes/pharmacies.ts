@@ -3,9 +3,7 @@ import { mockData } from '../db.js';
 
 export const pharmaciesRouter = Router();
 
-const PLACES_API = 'https://maps.googleapis.com/maps/api/place';
-const GEOCODE_API = 'https://maps.googleapis.com/maps/api/geocode/json';
-const GEOLOCATE_API = 'https://www.googleapis.com/geolocation/v1/geolocate';
+const GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || '6ffc48d8d83342dcaeb2f479819e23f7';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -34,123 +32,93 @@ function randomStock(): number {
   return Math.floor(Math.random() * 30) + 4;
 }
 
-function formatPlacesResult(
+function formatGeoapifyResult(
   place: Record<string, any>,
   userLat: number,
   userLng: number,
   query: string
 ) {
-  const lat = place.geometry?.location?.lat ?? userLat;
-  const lng = place.geometry?.location?.lng ?? userLng;
+  const props = place.properties || {};
+  const lat = props.lat ?? userLat;
+  const lng = props.lon ?? userLng;
   const dist = haversineKm(userLat, userLng, lat, lng);
   const stock = randomStock();
-  const isOpen: boolean =
-    place.opening_hours?.open_now !== undefined
-      ? place.opening_hours.open_now
-      : true;
+  const isOpen = true; // Geoapify doesn't reliably give opening_hours in the free tier
 
   return {
-    id: place.place_id,
-    name: place.name,
-    address: place.vicinity ?? '',
+    id: props.place_id,
+    name: props.name || props.address_line1 || 'Pharmacy',
+    address: props.address_line2 || props.formatted || '',
     distance: dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`,
     open: isOpen ? 'Open now' : 'Closed',
     stock,
     fresh: `${Math.floor(Math.random() * 10) + 1} min ago`,
     price: `₹${(Math.random() * 80 + 20).toFixed(0)}`,
     state: isOpen ? stockState(stock) : ('out' as const),
-    rating: place.rating ?? null,
-    totalRatings: place.user_ratings_total ?? 0,
-    types: place.types ?? [],
+    rating: (Math.random() * 2 + 3).toFixed(1), // Geoapify lacks ratings mostly, mock it
+    totalRatings: Math.floor(Math.random() * 500) + 10,
+    types: props.categories ?? [],
     medicine: query,
     lat,
     lng,
   };
 }
 
-// ─── POST /api/pharmacies/geolocate (Google Maps Geolocation API) ─────────────
+// ─── POST /api/pharmacies/geolocate (Geoapify IP Info API) ────────────────────
 
 pharmaciesRouter.post('/geolocate', async (req: Request, res: Response) => {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-
-  if (!apiKey) {
-    return res.json({
-      latitude: 12.9716,
-      longitude: 77.5946,
-      city: 'Bengaluru (Default)',
-      source: 'fallback'
-    });
-  }
-
   try {
-    // 1. Ask Google Maps Geolocation API for lat/lng based on network/IP
-    const geoRes = await fetch(`${GEOLOCATE_API}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body || {})
-    });
+    const geoRes = await fetch(`https://api.geoapify.com/v1/ipinfo?apiKey=${GEOAPIFY_API_KEY}`);
     const geoData: Record<string, any> = await geoRes.json();
 
     if (geoData.error) {
-       return res.status(400).json({ error: geoData.error.message || 'Google Geolocation API Error' });
+       return res.status(400).json({ error: geoData.error.message || 'Geoapify IP Info Error' });
     }
 
-    let lat = geoData.location?.lat ?? 12.9716;
-    let lng = geoData.location?.lng ?? 77.5946;
-
-    // 2. Reverse Geocode via Google Maps to get human-readable location name
-    const revUrl = `${GEOCODE_API}?latlng=${lat},${lng}&key=${apiKey}`;
-    const revRes = await fetch(revUrl);
-    const revData: Record<string, any> = await revRes.json();
-
-    let city = 'Your Area';
-    if (revData.status === 'OK' && revData.results?.[0]) {
-      const components = revData.results[0].address_components || [];
-      const sublocality = components.find((c: any) => c.types.includes('sublocality') || c.types.includes('neighborhood'))?.long_name;
-      const locality = components.find((c: any) => c.types.includes('locality'))?.long_name;
-      city = [sublocality, locality].filter(Boolean).join(', ') || revData.results[0].formatted_address;
-    }
+    let lat = geoData.location?.latitude ?? 12.9716;
+    let lng = geoData.location?.longitude ?? 77.5946;
+    let city = geoData.city?.name || 'Your Area';
 
     return res.json({
       latitude: lat,
       longitude: lng,
       city,
-      source: 'google_maps'
+      source: 'geoapify'
     });
   } catch (err: any) {
-    console.error('Google Geolocation error:', err.message);
+    console.error('Geoapify Geolocation error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 });
 
-// ─── GET /api/pharmacies/geocode (Google Maps Geocoding API) ─────────────────
+// ─── GET /api/pharmacies/geocode (Geoapify Geocoding API) ────────────────────
 
 pharmaciesRouter.get('/geocode', async (req: Request, res: Response) => {
   const address = String(req.query.address || '');
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
-  if (!apiKey || !address) {
-    return res.status(400).json({ error: 'Address and API key required' });
+  if (!address) {
+    return res.status(400).json({ error: 'Address required' });
   }
 
   try {
-    const url = `${GEOCODE_API}?address=${encodeURIComponent(address)}&key=${apiKey}`;
+    const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&apiKey=${GEOAPIFY_API_KEY}`;
     const r = await fetch(url);
     const json: Record<string, any> = await r.json();
 
-    if (json.status !== 'OK') {
-      return res.status(400).json({ error: json.error_message || `Google API Error: ${json.status}` });
+    if (json.statusCode === 401) {
+      return res.status(401).json({ error: 'Geoapify API Error: Unauthorized' });
     }
     
-    if (!json.results?.[0]) {
-      return res.status(404).json({ error: 'Location not found via Google Maps' });
+    if (!json.features || json.features.length === 0) {
+      return res.status(404).json({ error: 'Location not found via Geoapify' });
     }
 
-    const loc = json.results[0].geometry.location;
+    const feature = json.features[0];
+    const loc = feature.geometry.coordinates; // [lon, lat]
     return res.json({
-      latitude: loc.lat,
-      longitude: loc.lng,
-      formattedAddress: json.results[0].formatted_address
+      latitude: loc[1],
+      longitude: loc[0],
+      formattedAddress: feature.properties.formatted || address
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -165,61 +133,42 @@ pharmaciesRouter.get('/', async (req: Request, res: Response) => {
   const lng    = parseFloat(String(req.query.lng  || '77.5946'));
   const radius = parseInt(String(req.query.radius || '3000'), 10);
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-
-  if (!apiKey) {
-    console.warn('GOOGLE_PLACES_API_KEY not set — returning mock data');
-    return res.json(mockData.pharmacies);
-  }
-
   try {
-    const types = ['pharmacy', 'hospital', 'doctor', 'drugstore'];
-    const allResults: Record<string, any>[] = [];
+    // Geoapify categories for pharmacies and hospitals
+    const categories = 'healthcare.pharmacy,healthcare.hospital,healthcare.clinic_or_praxis';
+    const url =
+      `https://api.geoapify.com/v2/places` +
+      `?categories=${categories}` +
+      `&filter=circle:${lng},${lat},${radius}` +
+      `&limit=20` +
+      `&apiKey=${GEOAPIFY_API_KEY}`;
 
-    await Promise.all(
-      types.map(async (type) => {
-        const url =
-          `${PLACES_API}/nearbysearch/json` +
-          `?location=${lat},${lng}` +
-          `&radius=${radius}` +
-          `&type=${type}` +
-          `&keyword=${encodeURIComponent('medical pharmacy clinic')}` +
-          `&key=${apiKey}`;
+    const r = await fetch(url);
+    const json: Record<string, any> = await r.json();
 
-        const r = await fetch(url);
-        const json: Record<string, any> = await r.json();
-
-        if (json.status === 'OK' && Array.isArray(json.results)) {
-          allResults.push(...json.results);
-        } else if (json.status === 'REQUEST_DENIED') {
-          console.error('Google Places API denied:', json.error_message);
-        } else {
-          console.warn(`Places type "${type}" status:`, json.status);
-        }
-      })
-    );
-
-    if (allResults.length === 0) {
-      console.warn('No Google Places results — falling back to mock data');
+    if (!json.features || json.features.length === 0) {
+      console.warn('No Geoapify Places results — falling back to mock data');
       return res.json(mockData.pharmacies);
     }
 
+    const allResults = json.features;
     const seen = new Set<string>();
-    const unique = allResults.filter((p) => {
-      if (seen.has(p.place_id)) return false;
-      seen.add(p.place_id);
+    const unique = allResults.filter((p: any) => {
+      const placeId = p.properties?.place_id;
+      if (!placeId || seen.has(placeId)) return false;
+      seen.add(placeId);
       return true;
     });
 
     const formatted = unique
-      .map((p) => formatPlacesResult(p, lat, lng, query))
-      .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
+      .map((p: any) => formatGeoapifyResult(p, lat, lng, query))
+      .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
       .slice(0, 12);
 
-    console.log(`✅ Google Places returned ${formatted.length} nearby medical places for query "${query}"`);
+    console.log(`✅ Geoapify returned ${formatted.length} nearby medical places for query "${query}"`);
     return res.json(formatted);
   } catch (err: any) {
-    console.error('Google Places API error:', err.message);
+    console.error('Geoapify Places API error:', err.message);
     return res.json(mockData.pharmacies);
   }
 });
@@ -228,25 +177,36 @@ pharmaciesRouter.get('/', async (req: Request, res: Response) => {
 
 pharmaciesRouter.get('/:placeId/details', async (req: Request, res: Response) => {
   const placeId = String(req.params.placeId);
-  const apiKey  = process.env.GOOGLE_PLACES_API_KEY;
-
-  if (!apiKey) return res.status(503).json({ error: 'Google API not configured' });
 
   try {
-    const url =
-      `${PLACES_API}/details/json` +
-      `?place_id=${placeId}` +
-      `&fields=name,formatted_address,formatted_phone_number,opening_hours,website,geometry,rating,user_ratings_total` +
-      `&key=${apiKey}`;
-
+    const url = `https://api.geoapify.com/v2/place-details?id=${placeId}&apiKey=${GEOAPIFY_API_KEY}`;
     const r    = await fetch(url);
     const json: Record<string, any> = await r.json();
 
-    if (json.status !== 'OK') {
-      return res.status(400).json({ error: json.status, message: json.error_message });
+    if (!json.features || json.features.length === 0) {
+      return res.status(404).json({ error: 'Place details not found' });
     }
+    
+    const props = json.features[0].properties;
 
-    return res.json(json.result);
+    // Map geoapify properties to look somewhat like the old Google Places result
+    // so the frontend component (PharmacyCard) still works without breaking.
+    const result = {
+      name: props.name || props.address_line1 || 'Pharmacy',
+      formatted_address: props.formatted || '',
+      formatted_phone_number: props.contact?.phone || 'Not available',
+      website: props.website || '',
+      geometry: {
+        location: {
+          lat: props.lat,
+          lng: props.lon
+        }
+      },
+      rating: (Math.random() * 2 + 3).toFixed(1), // Mock rating
+      user_ratings_total: Math.floor(Math.random() * 500) + 10
+    };
+
+    return res.json(result);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -258,28 +218,25 @@ pharmaciesRouter.get('/autocomplete', async (req: Request, res: Response) => {
   const input  = String(req.query.input || '');
   const lat    = parseFloat(String(req.query.lat  || '12.9716'));
   const lng    = parseFloat(String(req.query.lng  || '77.5946'));
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
-  if (!apiKey || !input) return res.json([]);
+  if (!input) return res.json([]);
 
   try {
     const url =
-      `${PLACES_API}/autocomplete/json` +
-      `?input=${encodeURIComponent(input)}` +
-      `&location=${lat},${lng}` +
-      `&radius=5000` +
-      `&types=establishment` +
-      `&key=${apiKey}`;
+      `https://api.geoapify.com/v1/geocode/autocomplete` +
+      `?text=${encodeURIComponent(input)}` +
+      `&filter=circle:${lng},${lat},10000` + // 10km radius bias
+      `&apiKey=${GEOAPIFY_API_KEY}`;
 
     const r    = await fetch(url);
     const json: Record<string, any> = await r.json();
 
-    if (json.status !== 'OK') return res.json([]);
+    if (!json.features) return res.json([]);
 
-    const suggestions = (json.predictions || []).map((p: any) => ({
-      placeId: p.place_id,
-      description: p.description,
-      mainText: p.structured_formatting?.main_text,
+    const suggestions = json.features.map((f: any) => ({
+      placeId: f.properties.place_id,
+      description: f.properties.formatted,
+      mainText: f.properties.address_line1 || f.properties.name,
     }));
 
     return res.json(suggestions);
