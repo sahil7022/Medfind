@@ -53,11 +53,13 @@ Symptoms: "${symptoms}"
 
 Analyze the symptoms and reply in ${language} with:
 1. 🩺 Assessment Summary
-2. 💊 Suggested OTC Medicines (Include SEARCH_TAG: [Medicine Name] for each medicine)
-3. 📋 Dosage & Usage Advice
-4. ⚠️ Safety Warnings
-5. 🚨 Emergency Red Flags
-6. ⚕️ Medical Disclaimer`;
+2. 🔍 Possible Causes & Why It's Happening (Explain probable medical hypotheses & possibilities on why these symptoms occur)
+3. 💊 Suggested OTC Medicines (Include SEARCH_TAG: [Medicine Name] for each medicine)
+4. 📋 Dosage & Usage Advice
+5. ⚠️ Safety Warnings
+6. 🚨 Emergency Red Flags
+7. ⚕️ Medical Disclaimer`;
+
 
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const geminiRes = await fetch(geminiUrl, {

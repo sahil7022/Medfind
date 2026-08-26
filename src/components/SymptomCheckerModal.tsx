@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Send, Bot, User, Sparkles, Globe, Volume2, Mic, MicOff,
-  AlertTriangle, Search, RefreshCw, Stethoscope, ChevronRight, CheckCircle2,
-  Radio, PhoneCall, VolumeX, MessageSquare, Square, RefreshCcw
+  AlertTriangle, Search, RefreshCw, Stethoscope, ChevronRight, ChevronLeft, CheckCircle2,
+  Radio, PhoneCall, VolumeX, MessageSquare, Square, RefreshCcw, HelpCircle, Activity
 } from 'lucide-react';
 import { analyzeSymptomsWithGemini, ChatMessage } from '../services/gemini';
 
@@ -51,6 +51,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
   const [latestAiResponse, setLatestAiResponse] = useState<ChatMessage | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const langScrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const liveRecognitionRef = useRef<any>(null);
 
@@ -81,25 +82,35 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
     }
   }, [isOpen]);
 
+  // Language bar left/right scroll handler
+  const scrollLanguages = (direction: 'left' | 'right') => {
+    if (langScrollRef.current) {
+      langScrollRef.current.scrollBy({
+        left: direction === 'left' ? -200 : 200,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   // Welcome greeting generator for multilingual support
   function getWelcomeText(lang: string): string {
     switch (lang.toLowerCase()) {
       case 'spanish':
-        return `¡Hola! Soy tu **Asistente de Salud e Inteligencia Médica MedFind** 🩺\nDescribe tus síntomas y te sugeriré medicamentos de venta libre (OTC), dosis y precauciones.`;
+        return `¡Hola! Soy tu **Asistente de Salud e Inteligencia Médica MedFind** 🩺\nDescribe tus síntomas y analizaré las causas probables, medicamentos de venta libre (OTC), dosis y precauciones.`;
       case 'hindi':
-        return `नमस्ते! मैं आपका **MedFind AI स्वास्थ्य सहायक** हूँ 🩺\nअपने लक्षण बताएं, और मैं आपको उचित दवाएं (OTC), खुराक और सावधानियां बताऊंगा।`;
+        return `नमस्ते! मैं आपका **MedFind AI स्वास्थ्य सहायक** हूँ 🩺\nअपने लक्षण बताएं, और मैं संभावित कारणों, उचित दवाओं (OTC), खुराक और सावधानियों का विश्लेषण करूंगा।`;
       case 'french':
-        return `Bonjour ! Je suis votre **Assistant Médical IA MedFind** 🩺\nDécrivez vos symptômes et je vous suggérerai des médicaments en vente libre adaptés.`;
+        return `Bonjour ! Je suis votre **Assistant Médical IA MedFind** 🩺\nDécrivez vos symptômes et j'analyserai les causes possibles, médicaments et conseils adaptés.`;
       case 'german':
-        return `Hallo! Ich bin Ihr **MedFind KI-Gesundheitsassistent** 🩺\nBeschreiben Sie Ihre Symptome für Rezeptfreie Medikamenten-Empfehlungen.`;
+        return `Hallo! Ich bin Ihr **MedFind KI-Gesundheitsassistent** 🩺\nBeschreiben Sie Ihre Symptome für Ursachenanalysen und Rezeptfreie Medikamenten-Empfehlungen.`;
       case 'chinese':
-        return `您好！我是 **MedFind AI 智能健康助手** 🩺\n请描述您的症状，我将为您推荐合适的非处方药物、用量及注意事项。`;
+        return `您好！我是 **MedFind AI 智能健康助手** 🩺\n请描述您的症状，我将分析可能的原因、非处方药物、用量及注意事项。`;
       case 'arabic':
-        return `مرحباً! أنا **مساعد MedFind الطبي الذكي** 🩺\nصف أعراضك وسأقترح عليك الأدوية المناسبة والجرعات والتنبيهات.`;
+        return `مرحباً! أنا **مساعد MedFind الطبي الذكي** 🩺\nصف أعراضك وسأحلل الأسباب المحتملة وأقترح الأدوية والجرعات والتنبيهات.`;
       case 'bengali':
-        return `হ্যালো! আমি আপনার **MedFind AI স্বাস্থ্য সহকারী** 🩺\nআপনার লক্ষণগুলি বলুন, আমি আপনাকে প্রয়োজনীয় ওষুধ ও সঠিক ডোজের তথ্য দেব।`;
+        return `হ্যালো! আমি আপনার **MedFind AI স্বাস্থ্য সহকারী** 🩺\nআপনার লক্ষণগুলি বলুন, আমি সম্ভাব্য কারণ, প্রয়োজনীয় ওষুধ ও সঠিক ডোজ বিশ্লেষণ করব।`;
       default:
-        return `Hello! I am your **MedFind AI Health & Symptom Assistant** 🩺\nDescribe your symptoms below, and I will analyze them using Google Gemini API to suggest appropriate over-the-counter (OTC) medicines, dosage instructions, and safety precautions.`;
+        return `Hello! I am your **MedFind AI Health & Symptom Assistant** 🩺\nDescribe your symptoms below, and I will analyze what might be happening, why it occurs, suggest over-the-counter (OTC) medicines, dosage instructions, and safety precautions.`;
     }
   }
 
@@ -156,13 +167,11 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
     };
 
     recognition.onend = () => {
-      // Auto submit when user finishes speaking
       if (liveRecognitionRef.current && !isMicMuted) {
         const textToAnalyze = liveRecognitionRef.current.finalTranscript || '';
         if (textToAnalyze.trim().length > 2) {
           handleLiveVoiceSubmit(textToAnalyze);
         } else {
-          // Restart listening loop if no input
           setTimeout(() => {
             if (isLiveVoiceMode && !isMicMuted) {
               startLiveVoiceSession();
@@ -182,7 +191,6 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
     liveRecognitionRef.current = recognition;
     liveRecognitionRef.current.finalTranscript = '';
 
-    // Attach listener to track final transcript
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
         .map((result: any) => result[0].transcript)
@@ -264,7 +272,6 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
       setMessages((prev) => [...prev, aiMsg]);
       setLatestAiResponse(aiMsg);
 
-      // Immediately speak the AI response live!
       speakAiResponseLive(aiMsg);
     } catch (err) {
       console.error('Error analyzing symptoms in live mode:', err);
@@ -283,11 +290,10 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
     setVoiceStatus('speaking');
     window.speechSynthesis.cancel();
 
-    // Clean text for natural speech synthesis
     const cleanText = aiMsg.text
       .replace(/\(SEARCH_TAG:[^\)]+\)/gi, '')
       .replace(/[*#_`~]/g, '')
-      .replace(/🩺|💊|📋|⚠️|🚨|⚕️/g, '');
+      .replace(/🩺|🔍|💊|📋|⚠️|🚨|⚕️/g, '');
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
@@ -471,7 +477,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center md:justify-end p-0 md:p-6 bg-slate-950/75 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center md:justify-end p-0 md:p-6 bg-[#040812]/80 backdrop-blur-xl">
         {/* Backdrop overlay */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -481,19 +487,19 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
           className="absolute inset-0 cursor-pointer"
         />
 
-        {/* Floating Modal Card */}
+        {/* Floating Modal Container — Handcrafted Luxury Design */}
         <motion.div
           initial={{ x: '100%', opacity: 0, scale: 0.96 }}
           animate={{ x: 0, opacity: 1, scale: 1 }}
           exit={{ x: '100%', opacity: 0, scale: 0.96 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="relative w-full max-w-2xl h-full md:h-[90vh] md:max-h-[820px] bg-slate-950/90 text-white md:rounded-3xl shadow-2xl shadow-slate-950/90 flex flex-col overflow-hidden border border-slate-800/80 z-10 backdrop-blur-2xl"
+          className="relative w-full max-w-2xl h-full md:h-[90vh] md:max-h-[830px] bg-[#070d19]/95 text-white md:rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden border border-slate-800/80 z-10 backdrop-blur-2xl bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950/20 via-slate-950 to-slate-950"
         >
           {/* Header */}
-          <div className="p-4 md:p-5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800/80 flex items-center justify-between gap-3 shadow-sm">
+          <div className="p-4 md:p-5 bg-gradient-to-r from-slate-950 via-slate-900/90 to-slate-950 border-b border-slate-800/80 flex items-center justify-between gap-3 shadow-md">
             <div className="flex items-center gap-3.5">
               <div className="relative">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-slate-900 border border-emerald-500/30 text-emerald-400 grid place-items-center shadow-lg shadow-emerald-950/40">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/25 via-teal-500/15 to-slate-900 border border-emerald-500/40 text-emerald-400 grid place-items-center shadow-[0_0_20px_rgba(16,185,129,0.2)]">
                   <Bot size={24} />
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-950 animate-pulse" />
@@ -507,20 +513,20 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                     <Sparkles size={11} className="text-amber-300" /> Gemini 2.5
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Multilingual OTC Medicine Recommendation Engine</p>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Multilingual Medical Assessment & OTC Guidance</p>
               </div>
             </div>
 
             {/* Mode Switcher Toggle Button (Live Voice vs Text Chat) */}
             <div className="flex items-center gap-2">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={toggleLiveVoiceMode}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md ${
                   isLiveVoiceMode
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-950/50 border border-emerald-400/40 animate-pulse'
-                    : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.4)] border border-emerald-400/50 animate-pulse'
+                    : 'bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
                 }`}
               >
                 {isLiveVoiceMode ? <Radio size={14} className="text-white" /> : <Mic size={14} className="text-emerald-400" />}
@@ -530,28 +536,38 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
               <button
                 onClick={handleResetChat}
                 title="Reset Chat"
-                className="w-9 h-9 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-all flex items-center justify-center"
+                className="w-9 h-9 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-all flex items-center justify-center cursor-pointer"
               >
                 <RefreshCw size={15} className={isRefreshing ? 'animate-spin text-emerald-400' : ''} />
               </button>
 
               <button
                 onClick={onClose}
-                className="w-9 h-9 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-all flex items-center justify-center"
+                className="w-9 h-9 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-all flex items-center justify-center cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
           </div>
 
-          {/* Language Selector Bar (NO HORIZONTAL SCROLLBAR) */}
-          <div className="px-4 py-3 bg-slate-950/90 border-b border-slate-800/60 flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-slate-400 shrink-0 text-xs font-semibold">
+          {/* Language Selector Bar with Smooth Arrow Navigation */}
+          <div className="px-4 py-2.5 bg-[#0a1122]/90 border-b border-slate-800/80 flex items-center gap-2 relative shadow-inner">
+            <div className="flex items-center gap-1.5 text-slate-300 shrink-0 text-xs font-bold mr-1">
               <Globe size={14} className="text-emerald-400" />
               <span>Language:</span>
             </div>
 
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
+            {/* Left Scroll Arrow */}
+            <button
+              onClick={() => scrollLanguages('left')}
+              title="Scroll left"
+              className="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Scrollable Language Pills Container */}
+            <div ref={langScrollRef} className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 scroll-smooth">
               {LANGUAGES.map((lang) => {
                 const isActive = selectedLanguage === lang.code;
                 return (
@@ -568,8 +584,8 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 relative ${
                       isActive
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/50 border border-emerald-400/40'
-                        : 'bg-slate-900/80 text-slate-400 hover:bg-slate-850 hover:text-slate-200 border border-slate-800/60'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.35)] border border-emerald-400/40'
+                        : 'bg-slate-900/80 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-800/80'
                     }`}
                   >
                     <span>{lang.flag}</span>
@@ -578,11 +594,20 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                 );
               })}
             </div>
+
+            {/* Right Scroll Arrow */}
+            <button
+              onClick={() => scrollLanguages('right')}
+              title="Scroll right"
+              className="w-7 h-7 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
 
           {/* 🎙️ LIVE GEMINI AI VOICE ASSISTANT VIEW OVERLAY */}
           {isLiveVoiceMode ? (
-            <div className="flex-1 flex flex-col justify-between p-6 bg-slate-950/80 backdrop-blur-xl relative overflow-hidden">
+            <div className="flex-1 flex flex-col justify-between p-6 bg-[#060c18]/90 backdrop-blur-xl relative overflow-hidden">
               {/* Top Status Badge */}
               <div className="flex justify-center">
                 <motion.div
@@ -599,7 +624,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                   {voiceStatus === 'analyzing' && (
                     <>
                       <Sparkles size={13} className="text-amber-400 animate-spin" />
-                      <span className="text-amber-300">Gemini AI is evaluating symptoms...</span>
+                      <span className="text-amber-300">Gemini AI evaluating root causes...</span>
                     </>
                   )}
                   {voiceStatus === 'speaking' && (
@@ -701,7 +726,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                           onSearchMedicine(med);
                           onClose();
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-200 text-xs font-bold flex items-center gap-1.5 shadow-md transition-all"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-200 text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
                       >
                         <span>Search "{med}"</span>
                         <ChevronRight size={13} className="text-emerald-400" />
@@ -715,7 +740,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
               <div className="flex items-center justify-center gap-4 pt-2">
                 <button
                   onClick={toggleMicMute}
-                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all ${
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer ${
                     isMicMuted
                       ? 'bg-rose-950/80 border-rose-500/50 text-rose-200'
                       : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
@@ -728,7 +753,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                 {voiceStatus === 'speaking' && (
                   <button
                     onClick={interruptSpeech}
-                    className="px-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-amber-300 text-xs font-bold flex items-center gap-2 hover:bg-slate-850"
+                    className="px-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-amber-300 text-xs font-bold flex items-center gap-2 hover:bg-slate-850 cursor-pointer"
                   >
                     <Square size={14} />
                     <span>Stop AI Voice</span>
@@ -740,7 +765,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                     stopLiveVoiceSession();
                     setIsLiveVoiceMode(false);
                   }}
-                  className="px-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-2 cursor-pointer"
                 >
                   <MessageSquare size={15} />
                   <span>Text Mode</span>
@@ -751,7 +776,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
             /* 💬 TRADITIONAL TEXT CHAT VIEW */
             <>
               {/* Messages Area (Sleek custom scrollbar) */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 chat-scrollbar bg-slate-950/50">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 chat-scrollbar bg-[#060b17]/60">
                 {/* Sticky Safety Notice Banner */}
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
@@ -899,7 +924,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
 
               {/* Unified Floating Message Composer (Input Area) */}
               <div className="p-3 md:p-4 bg-slate-950 border-t border-slate-800/90">
-                <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800/90 rounded-2xl p-2 sm:p-2.5 flex items-end gap-2 shadow-xl shadow-slate-950/60 focus-within:border-emerald-500/40 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+                <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800/90 rounded-2xl p-2 sm:p-2.5 flex items-end gap-2 shadow-[0_0_25px_rgba(16,185,129,0.08)] focus-within:border-emerald-500/50 focus-within:shadow-[0_0_25px_rgba(16,185,129,0.2)] transition-all">
                   {/* Voice Button */}
                   <button
                     onClick={toggleVoiceRecording}
@@ -934,7 +959,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleSendSymptoms()}
                     disabled={!inputSymptoms.trim() || isAnalyzing}
-                    className="w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center shrink-0"
+                    className="w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center shrink-0 cursor-pointer"
                   >
                     <Send size={16} />
                   </motion.button>
@@ -948,7 +973,7 @@ export const SymptomCheckerModal: React.FC<SymptomCheckerModalProps> = ({
   );
 };
 
-/** Helper to render structured markdown with emergency warning & disclaimer callouts */
+/** Helper to render structured markdown with Emergency Warning, Possible Causes & Disclaimer callouts */
 function renderStructuredChatMessage(
   text: string,
   onSearchMedicine: (med: string) => void,
@@ -960,7 +985,32 @@ function renderStructuredChatMessage(
   return lines.map((line, idx) => {
     const trimmed = line.trim();
 
-    if (trimmed.includes('Emergency Warning') || trimmed.includes('Señales de Emergencia') || trimmed.includes('आपातकालीन') || trimmed.includes('Signes d\'urgence')) {
+    // 🔍 Possible Causes & Why It's Happening Section
+    if (
+      trimmed.includes('Possible Causes') ||
+      trimmed.includes('Why It\'s Happening') ||
+      trimmed.includes('Causas Posibles') ||
+      trimmed.includes('संभावित कारण') ||
+      trimmed.includes('Causes possibles')
+    ) {
+      return (
+        <div key={idx} className="my-3 p-3.5 rounded-xl bg-teal-950/40 border border-teal-500/30 text-teal-100 text-xs sm:text-sm shadow-md flex items-start gap-3">
+          <HelpCircle size={18} className="text-teal-400 shrink-0 mt-0.5" />
+          <div>
+            <b className="text-teal-300 font-extrabold block text-xs uppercase tracking-wider mb-1">🔍 Possible Causes & Why It's Happening:</b>
+            <span className="leading-relaxed">{line.replace(/[*#]/g, '')}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // 🚨 Emergency Warning Callout
+    if (
+      trimmed.includes('Emergency Warning') ||
+      trimmed.includes('Señales de Emergencia') ||
+      trimmed.includes('आपातकालीन') ||
+      trimmed.includes('Signes d\'urgence')
+    ) {
       return (
         <div key={idx} className="my-3 p-3.5 rounded-xl bg-rose-950/30 border border-rose-500/40 text-rose-200 text-xs sm:text-sm shadow-md flex items-start gap-3">
           <AlertTriangle size={18} className="text-rose-400 shrink-0 mt-0.5" />
@@ -972,7 +1022,13 @@ function renderStructuredChatMessage(
       );
     }
 
-    if (trimmed.includes('Disclaimer') || trimmed.includes('Aviso Médico') || trimmed.includes('चिकित्सा अस्वीकरण') || trimmed.includes('Avertissement médical')) {
+    // ⚕️ Medical Disclaimer Callout
+    if (
+      trimmed.includes('Disclaimer') ||
+      trimmed.includes('Aviso Médico') ||
+      trimmed.includes('चिकित्सा अस्वीकरण') ||
+      trimmed.includes('Avertissement médical')
+    ) {
       return (
         <div key={idx} className="mt-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 text-xs flex items-start gap-2.5">
           <Stethoscope size={15} className="text-slate-500 shrink-0 mt-0.5" />
@@ -984,7 +1040,7 @@ function renderStructuredChatMessage(
       );
     }
 
-    const isHeading = line.startsWith('🩺') || line.startsWith('💊') || line.startsWith('📋') || line.startsWith('⚠️') || line.startsWith('🚨') || line.startsWith('⚕️');
+    const isHeading = line.startsWith('🩺') || line.startsWith('🔍') || line.startsWith('💊') || line.startsWith('📋') || line.startsWith('⚠️') || line.startsWith('🚨') || line.startsWith('⚕️');
 
     return (
       <React.Fragment key={idx}>
