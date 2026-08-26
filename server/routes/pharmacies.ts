@@ -7,11 +7,25 @@ const GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || '';
 
 function hasGeoapifyKey(): boolean {
   if (!GEOAPIFY_API_KEY) {
-    console.warn('GEOAPIFY_API_KEY is not set — set it in .env to enable live location data');
+    console.warn('GEOAPIFY_API_KEY is not set — using local preset fallbacks');
     return false;
   }
   return true;
 }
+
+const PRESET_LOCATIONS: Record<string, { latitude: number; longitude: number; formattedAddress: string }> = {
+  bengaluru: { latitude: 12.9716, longitude: 77.5946, formattedAddress: 'Bengaluru, Karnataka' },
+  bangalore: { latitude: 12.9716, longitude: 77.5946, formattedAddress: 'Bengaluru, Karnataka' },
+  koramangala: { latitude: 12.9352, longitude: 77.6245, formattedAddress: 'Koramangala, Bengaluru' },
+  indiranagar: { latitude: 12.9784, longitude: 77.6408, formattedAddress: 'Indiranagar, Bengaluru' },
+  'mg road': { latitude: 12.9756, longitude: 77.6066, formattedAddress: 'MG Road, Bengaluru' },
+  mumbai: { latitude: 19.0760, longitude: 72.8777, formattedAddress: 'Mumbai, Maharashtra' },
+  delhi: { latitude: 28.6139, longitude: 77.2090, formattedAddress: 'Delhi NCR' },
+  hyderabad: { latitude: 17.3850, longitude: 78.4867, formattedAddress: 'Hyderabad, Telangana' },
+  chennai: { latitude: 13.0827, longitude: 80.2707, formattedAddress: 'Chennai, Tamil Nadu' },
+  kolkata: { latitude: 22.5726, longitude: 88.3639, formattedAddress: 'Kolkata, West Bengal' },
+  pune: { latitude: 18.5204, longitude: 73.8567, formattedAddress: 'Pune, Maharashtra' }
+};
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -120,7 +134,15 @@ pharmaciesRouter.get('/reverse-geocode', async (req: Request, res: Response) => 
     return res.status(400).json({ error: 'lat and lng query params required' });
   }
 
-  if (!hasGeoapifyKey()) return res.status(503).json({ error: 'Geocoding service not configured' });
+  if (!hasGeoapifyKey()) {
+    return res.json({
+      latitude: lat,
+      longitude: lng,
+      city: 'Current Location',
+      formattedAddress: 'GPS Location',
+      source: 'mock-fallback'
+    });
+  }
 
   try {
     const url =
@@ -168,7 +190,18 @@ pharmaciesRouter.get('/geocode', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Address required' });
   }
 
-  if (!hasGeoapifyKey()) return res.status(503).json({ error: 'Geocoding service not configured' });
+  if (!hasGeoapifyKey()) {
+    const key = address.trim().toLowerCase();
+    const matched = Object.keys(PRESET_LOCATIONS).find(k => key.includes(k));
+    if (matched) {
+      return res.json(PRESET_LOCATIONS[matched]);
+    }
+    return res.json({
+      latitude: 12.9716,
+      longitude: 77.5946,
+      formattedAddress: address
+    });
+  }
 
   try {
     const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&apiKey=${GEOAPIFY_API_KEY}`;
