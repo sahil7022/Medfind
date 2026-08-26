@@ -3,14 +3,13 @@ import { mockData } from '../db.js';
 
 export const pharmaciesRouter = Router();
 
-const GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || '';
+function getGeoapifyKey(): string {
+  return process.env.GEOAPIFY_API_KEY || '';
+}
 
 function hasGeoapifyKey(): boolean {
-  if (!GEOAPIFY_API_KEY) {
-    console.warn('GEOAPIFY_API_KEY is not set — using local preset fallbacks');
-    return false;
-  }
-  return true;
+  const key = getGeoapifyKey();
+  return Boolean(key && key.trim().length > 0);
 }
 
 const PRESET_LOCATIONS: Record<string, { latitude: number; longitude: number; formattedAddress: string }> = {
@@ -147,7 +146,7 @@ pharmaciesRouter.get('/reverse-geocode', async (req: Request, res: Response) => 
   try {
     const url =
       `https://api.geoapify.com/v1/geocode/reverse` +
-      `?lat=${lat}&lon=${lng}&apiKey=${GEOAPIFY_API_KEY}`;
+      `?lat=${lat}&lon=${lng}&apiKey=${getGeoapifyKey()}`;
     const r = await fetch(url);
     const json: Record<string, any> = await r.json();
 
@@ -204,7 +203,7 @@ pharmaciesRouter.get('/geocode', async (req: Request, res: Response) => {
   }
 
   try {
-    const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&apiKey=${GEOAPIFY_API_KEY}`;
+    const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&apiKey=${getGeoapifyKey()}`;
     const r = await fetch(url);
     const json: Record<string, any> = await r.json();
 
@@ -248,7 +247,7 @@ pharmaciesRouter.get('/', async (req: Request, res: Response) => {
         `?categories=${categories}` +
         `&filter=circle:${lng},${lat},${r}` +
         `&limit=20` +
-        `&apiKey=${GEOAPIFY_API_KEY}`
+        `&apiKey=${getGeoapifyKey()}`
       ).then((resp) => resp.json());
 
     let json: Record<string, any> = await fetchPlaces(radius);
@@ -341,7 +340,7 @@ pharmaciesRouter.get('/autocomplete', async (req: Request, res: Response) => {
       `https://api.geoapify.com/v1/geocode/autocomplete` +
       `?text=${encodeURIComponent(input)}` +
       `&filter=circle:${lng},${lat},10000` + // 10km radius bias
-      `&apiKey=${GEOAPIFY_API_KEY}`;
+      `&apiKey=${getGeoapifyKey()}`;
 
     const r    = await fetch(url);
     const json: Record<string, any> = await r.json();
