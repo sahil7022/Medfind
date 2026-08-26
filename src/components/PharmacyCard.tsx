@@ -16,6 +16,9 @@ export const PharmacyCard: React.FC<PharmacyCardProps> = ({
 }) => {
   const isOut = !pharmacy.stock || pharmacy.open === 'Closed';
 
+  // Rating can arrive as a string from the API — normalize to a number
+  const rating = pharmacy.rating != null ? Number(pharmacy.rating) : null;
+
   const stateBadge = {
     good: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     warn: 'bg-amber-50 text-amber-700 border-amber-100',
@@ -40,11 +43,15 @@ export const PharmacyCard: React.FC<PharmacyCardProps> = ({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.07, duration: 0.5, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: 40, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: index * 0.06, type: 'spring', stiffness: 260, damping: 20 }}
+      drag
+      dragSnapToOrigin
+      dragElastic={0.22}
+      whileDrag={{ scale: 1.03, zIndex: 10, boxShadow: '0 24px 48px rgba(23,61,87,0.2)' }}
       whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(23,61,87,0.12)' }}
-      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm transition-shadow"
+      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm transition-shadow cursor-grab active:cursor-grabbing"
     >
       {/* Header */}
       <div className="flex justify-between items-start gap-4 mb-3">
@@ -75,11 +82,11 @@ export const PharmacyCard: React.FC<PharmacyCardProps> = ({
             </span>
           </p>
 
-          {/* Google rating */}
-          {pharmacy.rating != null && (
+          {/* Rating */}
+          {rating != null && !Number.isNaN(rating) && (
             <div className="flex items-center gap-1 mt-1">
               <Star size={11} className="text-amber-400 fill-amber-400" />
-              <span className="text-[11px] font-bold text-slate-700">{pharmacy.rating.toFixed(1)}</span>
+              <span className="text-[11px] font-bold text-slate-700">{rating.toFixed(1)}</span>
               {pharmacy.totalRatings != null && (
                 <span className="text-[10px] text-slate-400">({pharmacy.totalRatings.toLocaleString()})</span>
               )}

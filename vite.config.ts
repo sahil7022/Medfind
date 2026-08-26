@@ -5,6 +5,17 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          motion: ['framer-motion', '@react-spring/web', '@formkit/auto-animate'],
+          firebase: ['firebase/app', 'firebase/auth'],
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {

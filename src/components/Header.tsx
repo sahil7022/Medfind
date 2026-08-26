@@ -15,6 +15,7 @@ const navItems = [
   { id: 'userView', label: 'Find Medicine', icon: Search },
   { id: 'savedView', label: 'Reservations', icon: Bookmark },
   { id: 'pharmacyView', label: 'Pharmacy Portal', icon: Store },
+  { id: 'clinicView', label: 'Clinic Panel', icon: MapPin },
 ];
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,32 +50,35 @@ export const Header: React.FC<HeaderProps> = ({
       </motion.div>
 
       {/* Nav */}
-      <nav className="hidden md:flex gap-1 flex-1 max-w-md">
-        {navItems.map(({ id, label, icon: Icon }, idx) => (
-          <motion.button
-            key={id}
-            onClick={() => setActiveScreen(id)}
-            className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
-              activeScreen === id ? 'text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900'
-            }`}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + idx * 0.07, duration: 0.4, ease: 'easeOut' }}
-          >
-            {activeScreen === id && (
-              <motion.span
-                layoutId="nav-pill"
-                className="absolute inset-0 bg-slate-200 rounded-xl"
-                transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-2">
-              <Icon size={14} /> {label}
-            </span>
-          </motion.button>
-        ))}
+<nav className="hidden md:flex gap-1 flex-1 max-w-md">
+        {navItems.map(({ id, label, icon: Icon }, idx) => {
+          const isClinic = id === 'clinicView';
+          return (
+            <motion.button
+              key={id}
+              onClick={() => setActiveScreen(id)}
+              className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                activeScreen === id ? 'text-slate-900 font-bold' : 'text-slate-600 hover:text-slate-900'
+              }${isClinic ? ' bg-emerald-50 border-emerald-200' : ''}`}
+              whileHover={{ scale: 1.03, borderColor: isClinic ? '#173d57' : undefined }}
+              whileTap={{ scale: 0.97 }}
+              initial={{ opacity: 0, y: -15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + idx * 0.07, duration: 0.4, ease: 'easeOut' }}
+            >
+              {activeScreen === id && (
+                <motion.span
+                  layoutId="nav-pill"
+                  className="absolute inset-0 bg-slate-200 rounded-xl"
+                  transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <Icon size={14} /> {label}
+              </span>
+            </motion.button>
+          );
+        })}
       </nav>
 
       {/* Right controls */}

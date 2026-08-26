@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { ReservationRequest } from '../services/api';
-import { CheckCircle, Clock } from 'lucide-react';
+import { CheckCircle, Clock, User } from 'lucide-react';
 
 interface QueueManagerProps {
   requests: ReservationRequest[];
@@ -38,7 +38,15 @@ export const QueueManager: React.FC<QueueManagerProps> = ({ requests, onConfirm 
               className="py-3 flex items-center justify-between text-xs gap-4"
             >
               <div className="flex-1 min-w-0">
-                <b className="font-bold text-slate-900 block">{r.id}</b>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <b className="font-bold text-slate-900">{r.id}</b>
+                  {r.patientName && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                      <User size={9} className="text-emerald-600" />
+                      {r.patientName}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[11px] text-slate-500 block truncate">{r.item}</span>
               </div>
 

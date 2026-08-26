@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -7,6 +7,7 @@ export interface Pharmacy {
   name: string;
   address?: string;
   distance: string;
+  distanceKm?: number;
   open: string;
   stock: number;
   fresh: string;
@@ -46,17 +47,28 @@ export interface ReservationRequest {
   id: string;
   item: string;
   status: string;
+  patientName?: string;
 }
 
 // ─── API client ───────────────────────────────────────────────────────────────
 
 export const apiService = {
-  /** Access user location via Google Maps Geolocation API */
+  /** Access user location via IP-based lookup (coarse fallback only) */
   async geolocateWithGoogleMaps(): Promise<{ latitude: number; longitude: number; city: string; source: string }> {
     const res = await fetch(`${API_BASE}/pharmacies/geolocate`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error || 'Failed to geolocate');
+    }
+    return data;
+  },
+
+  /** Convert GPS coordinates into a real place name (reverse geocoding) */
+  async reverseGeocode(lat: number, lng: number): Promise<{ latitude: number; longitude: number; city: string; formattedAddress?: string; source: string }> {
+    const res = await fetch(`${API_BASE}/pharmacies/reverse-geocode?lat=${lat}&lng=${lng}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to resolve area name');
     }
     return data;
   },
@@ -159,6 +171,7 @@ export const apiService = {
     medicine: string;
     qty: number;
     pharmacy: string;
+    patientName?: string;
   }) {
     try {
       const res = await fetch(`${API_BASE}/reservations`, {

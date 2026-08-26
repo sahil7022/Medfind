@@ -11,13 +11,13 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBCqKwtFC9ezg4L2qENjpH80oCJCdIy8sY",
-  authDomain: "eventify-b4860.firebaseapp.com",
-  projectId: "eventify-b4860",
-  storageBucket: "eventify-b4860.firebasestorage.app",
-  messagingSenderId: "126759669690",
-  appId: "1:126759669690:web:6fce7e99791f7b924c5783",
-  measurementId: "G-E3DKVLEQND"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyBCqKwtFC9ezg4L2qENjpH80oCJCdIy8sY',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'eventify-b4860.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'eventify-b4860',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'eventify-b4860.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '126759669690',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? '1:126759669690:web:6fce7e99791f7b924c5783',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID ?? 'G-E3DKVLEQND'
 };
 
 export const app = initializeApp(firebaseConfig);

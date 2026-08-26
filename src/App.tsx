@@ -9,12 +9,15 @@ import { PharmacyCard } from './components/PharmacyCard';
 import { InventoryManager } from './components/InventoryManager';
 import { QueueManager } from './components/QueueManager';
 import { ReserveModal } from './components/ReserveModal';
+import { ClinicPanel } from './components/ClinicPanel';
 import { apiService, Pharmacy, InventoryItem, ReservationRequest } from './services/api';
-import { getCurrentUserLocation, LocationCoordinates } from './services/geo';
-import { onAuthChange, loginWithEmail, registerWithEmail, loginWithGoogle, logoutUser } from './firebase';
+import { getCurrentUserLocation, LocationCoordinates } from './services/geo';import { onAuthChange, loginWithEmail, registerWithEmail, loginWithGoogle, logoutUser } from './firebase';
 
 export const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState('userView');
+  const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
+  const [clinicId, setClinicId] = useState('clinic-1');
+  const [clinicName, setClinicName] = useState('CityCare Pharmacy');
   const [medicine, setMedicine] = useState('Paracetamol 500 mg');
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -56,6 +59,24 @@ export const App: React.FC = () => {
     loadData();
   }, []);
 
+  // Auto-detect the user's real GPS location on first load and refresh nearby results
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const detected = await getCurrentUserLocation();
+        if (!cancelled && detected.source !== 'default') {
+          setLocation(detected);
+          const pData = await apiService.getPharmacies(medicine, detected.latitude, detected.longitude);
+          if (!cancelled) setPharmacies(pData);
+        }
+      } catch (err) {
+        console.warn('Initial location detection skipped:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const handleDetectLocation = () => {
@@ -76,7 +97,10 @@ export const App: React.FC = () => {
   const handleConfirmReservation = async (qty: number) => {
     if (!selectedPharmacy) return;
     const resId = 'MF' + Math.floor(1000 + Math.random() * 9000);
-    const payload = { id: resId, medicine, qty, pharmacy: selectedPharmacy.name };
+    const patientName = currentUser
+      ? (currentUser.displayName || currentUser.email?.split('@')[0] || 'Registered Patient')
+      : 'Rahul Sharma';
+    const payload = { id: resId, medicine, qty, pharmacy: selectedPharmacy.name, patientName };
 
     await apiService.createReservation(payload);
     setActiveReservation(payload);
@@ -171,6 +195,14 @@ export const App: React.FC = () => {
                     Pharmacies with {medicine}
                   </h2>
                 </div>
+                <motion.button
+                  onClick={() => setActiveScreen('clinicView')}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-gradient-to-r from-[#173d57] to-[#235274] text-white font-bold text-xs py-2 rounded-xl shadow-md px-6 transition-colors"
+                >
+                  Open Clinic Panel
+</motion.button>
               </div>
 
               <div className="text-xs text-slate-500 mb-6">
@@ -247,58 +279,34 @@ export const App: React.FC = () => {
             key="pharmacyView"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-6"
+            className="max-w-4xl mx-auto space-y-6"
           >
-            <div className="flex justify-between items-end gap-4">
-              <div>
-                <span className="text-[11px] font-extrabold tracking-widest text-emerald-600 uppercase">
-                  PHARMACY PORTAL
-                </span>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">CityCare Pharmacy</h1>
-              </div>
-              <span className="bg-emerald-50 text-emerald-700 font-extrabold text-xs px-3.5 py-1.5 rounded-full">
-                ● Open until 10:30 PM
+            <div className="mb-2">
+              <span className="text-[11px] font-extrabold tracking-widest text-emerald-600 uppercase">
+                PHARMACY PORTAL
               </span>
+              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Manage your store</h1>
+              <p className="text-xs text-slate-500">Update live stock counts and confirm pickup reservations.</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <span className="text-xs text-slate-500 font-semibold block">Listed medicines</span>
-                <b className="text-3xl font-extrabold text-slate-900 block my-1">{inventory.length}</b>
-                <small className="text-slate-400 text-[10px]">in inventory</small>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <span className="text-xs text-slate-500 font-semibold block">Low stock</span>
-                <b className="text-3xl font-extrabold text-slate-900 block my-1">
-                  {inventory.filter(x => x.stock <= 2).length}
-                </b>
-                <small className="text-slate-400 text-[10px]">need attention</small>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <span className="text-xs text-slate-500 font-semibold block">Pending reservations</span>
-                <b className="text-3xl font-extrabold text-slate-900 block my-1">
-                  {requests.filter(x => x.status === 'Pending').length}
-                </b>
-                <small className="text-slate-400 text-[10px]">awaiting action</small>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <span className="text-xs text-slate-500 font-semibold block">Last inventory sync</span>
-                <b className="text-3xl font-extrabold text-slate-900 block my-1">4 min</b>
-                <small className="text-slate-400 text-[10px]">ago</small>
-              </div>
-            </div>
+            <InventoryManager items={inventory} onUpdateStock={handleUpdateStock} onRefresh={() => loadData()} />
+            <QueueManager requests={requests} onConfirm={handleConfirmRequest} />
+          </motion.section>
+        )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <InventoryManager
-                items={inventory}
-                onUpdateStock={handleUpdateStock}
-                onRefresh={loadData}
-              />
-              <QueueManager
-                requests={requests}
-                onConfirm={handleConfirmRequest}
-              />
-            </div>
+        {activeScreen === 'clinicView' && (
+          <motion.section
+            key="clinicView"
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="relative"
+          >
+            <ClinicPanel
+              clinicId={clinicId}
+              clinicName={clinicName}
+              onClose={() => setActiveScreen('userView')}
+              onToast={showToast}
+            />
           </motion.section>
         )}
 
@@ -442,6 +450,19 @@ export const App: React.FC = () => {
             </div>
           </motion.section>
         )}
+
+        {activeScreen !== 'clinicView' && clinicPanelOpen && (
+          <AnimatePresence>
+            <ClinicPanel
+              key="clinic-panel-overlay"
+              clinicId={clinicId}
+              clinicName={clinicName}
+              onClose={() => setClinicPanelOpen(false)}
+              onToast={showToast}
+            />
+          </AnimatePresence>
+        )}
+
         </AnimatePresence>
       </main>
 

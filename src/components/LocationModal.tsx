@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, Search, Navigation, X, Check, Sparkles } from 'lucide-react';
 import { apiService } from '../services/api';
-import { LocationCoordinates } from '../services/geo';
+import { getCurrentUserLocation, LocationCoordinates } from '../services/geo';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -29,22 +29,24 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleGoogleDetect = async () => {
+  const handleDetectLocation = async () => {
     setIsGeolocating(true);
     setErrorMsg('');
-    onToast('Fetching location via Google Maps API...');
+    onToast('Detecting your location via GPS...');
 
     try {
-      const loc = await apiService.geolocateWithGoogleMaps();
+      // Real device GPS first, then reverse-geocoded into your actual area name
+      const loc = await getCurrentUserLocation();
       onSelectLocation({
         latitude: loc.latitude,
         longitude: loc.longitude,
-        city: loc.city || 'Google Maps Location'
+        city: loc.city || 'Current Location',
+        source: loc.source
       });
-      onToast(`📍 Location set to: ${loc.city}`);
+      onToast(`📍 Location set to: ${loc.city || 'Current Location'}`);
       onClose();
     } catch (e: any) {
-      setErrorMsg(e.message || 'Failed to detect via Google Maps. Please type your city below.');
+      setErrorMsg(e.message || 'Could not detect your location. Please search for your city below.');
     } finally {
       setIsGeolocating(false);
     }
@@ -109,7 +111,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             <div className="flex justify-between items-start">
               <div>
                 <span className="text-[10px] font-extrabold tracking-widest text-emerald-600 uppercase flex items-center gap-1">
-                  <Sparkles size={11} /> GOOGLE MAPS LOCATION
+                  <Sparkles size={11} /> YOUR LOCATION
                 </span>
                 <h2 className="text-xl font-extrabold text-slate-900 tracking-tight mt-0.5">
                   Select Search Location
@@ -129,9 +131,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </motion.button>
             </div>
 
-            {/* Google Geolocation Button */}
+            {/* GPS Detection Button */}
             <motion.button
-              onClick={handleGoogleDetect}
+              onClick={handleDetectLocation}
               disabled={isGeolocating}
               whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.97 }}
@@ -142,8 +144,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   <Navigation size={18} className={isGeolocating ? 'animate-spin' : ''} />
                 </div>
                 <div className="text-left">
-                  <b className="text-xs block">Auto-detect via Google Maps</b>
-                  <span className="text-[10px] text-slate-300">Uses Google Geolocation & Reverse Geocode API</span>
+                  <b className="text-xs block">Detect my location (GPS)</b>
+                  <span className="text-[10px] text-slate-300">Uses device GPS &amp; shows clinics near you</span>
                 </div>
               </div>
               <span className="text-xs font-bold bg-white/10 px-2.5 py-1 rounded-lg">

@@ -10,11 +10,12 @@ reservationsRouter.get('/', async (req: Request, res: Response) => {
 
 // POST /api/reservations
 reservationsRouter.post('/', async (req: Request, res: Response) => {
-  const { id, medicine, qty, pharmacy } = req.body;
+  const { id, medicine, qty, pharmacy, patientName } = req.body;
   const newReservation = {
     id: id || 'MF' + Math.floor(1000 + Math.random() * 9000),
     item: `${medicine || 'Paracetamol 500 mg'} × ${qty || 1}`,
-    status: 'Pending'
+    status: 'Pending',
+    patientName: patientName || 'Patient'
   };
 
   mockData.requests.unshift(newReservation);

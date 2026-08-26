@@ -46,8 +46,8 @@ export const mockData = {
     { id: 'i6', name: 'Amoxicillin 500 mg', stock: 2, unit: 'strips', fresh: '45 min ago', state: 'warn' }
   ],
   requests: [
-    { id: 'MF1024', item: 'Paracetamol 500 mg × 2', status: 'Pending' },
-    { id: 'MF1020', item: 'Azithromycin 500 mg × 1', status: 'Confirmed' },
-    { id: 'MF1017', item: 'ORS Sachets × 1', status: 'Ready' }
+    { id: 'MF1024', item: 'Paracetamol 500 mg × 2', status: 'Pending', patientName: 'Rahul Sharma' },
+    { id: 'MF1020', item: 'Azithromycin 500 mg × 1', status: 'Confirmed', patientName: 'Priya Patel' },
+    { id: 'MF1017', item: 'ORS Sachets × 1', status: 'Ready', patientName: 'Anish Kumar' }
   ]
 };
