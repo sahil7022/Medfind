@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+*.js.map
+
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.production
+.env*.local
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+
+# Vite
+vite.config.js.timestamp-*
+
+# Render deployment artifacts
+.render/
