@@ -25,7 +25,9 @@
     "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.0.0"
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -35,8 +37,6 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.7.0",
-    "tsx": "^4.23.12",
-    "typescript": "^5.7.3",
     "vite": "^6.4.3"
   }
 }
