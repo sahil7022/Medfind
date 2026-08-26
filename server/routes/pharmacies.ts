@@ -92,7 +92,7 @@ pharmaciesRouter.post('/geolocate', async (req: Request, res: Response) => {
   if (!hasGeoapifyKey()) return res.status(503).json({ error: 'Geolocation service not configured' });
 
   try {
-    const geoRes = await fetch(`https://api.geoapify.com/v1/ipinfo?apiKey=${GEOAPIFY_API_KEY}`);
+    const geoRes = await fetch(`https://api.geoapify.com/v1/ipinfo?apiKey=${getGeoapifyKey()}`);
     const geoData: Record<string, any> = await geoRes.json();
 
     if (geoData.error) {
@@ -292,7 +292,7 @@ pharmaciesRouter.get('/:placeId/details', async (req: Request, res: Response) =>
   if (!hasGeoapifyKey()) return res.status(503).json({ error: 'Place details service not configured' });
 
   try {
-    const url = `https://api.geoapify.com/v2/place-details?id=${placeId}&apiKey=${GEOAPIFY_API_KEY}`;
+    const url = `https://api.geoapify.com/v2/place-details?id=${placeId}&apiKey=${getGeoapifyKey()}`;
     const r    = await fetch(url);
     const json: Record<string, any> = await r.json();
 
