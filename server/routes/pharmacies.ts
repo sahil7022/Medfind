@@ -4,6 +4,8 @@ import { mockData } from '../db.js';
 export const pharmaciesRouter = Router();
 
 const PLACES_API = 'https://maps.googleapis.com/maps/api/place';
+const GEOCODE_API = 'https://maps.googleapis.com/maps/api/geocode/json';
+const GEOLOCATE_API = 'https://www.googleapis.com/geolocation/v1/geolocate';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -26,14 +28,11 @@ function stockState(qty: number): 'good' | 'warn' | 'out' {
 }
 
 function randomStock(): number {
-  // simulate real stock variance per result
   const r = Math.random();
   if (r < 0.15) return 0;
   if (r < 0.3) return Math.floor(Math.random() * 3) + 1;
   return Math.floor(Math.random() * 30) + 4;
 }
-
-// ─── format a Google Places result into our Pharmacy shape ──────────────────
 
 function formatPlacesResult(
   place: Record<string, any>,
@@ -69,6 +68,92 @@ function formatPlacesResult(
   };
 }
 
+// ─── POST /api/pharmacies/geolocate (Google Maps Geolocation API) ─────────────
+
+pharmaciesRouter.post('/geolocate', async (req: Request, res: Response) => {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+
+  if (!apiKey) {
+    return res.json({
+      latitude: 12.9716,
+      longitude: 77.5946,
+      city: 'Bengaluru (Default)',
+      source: 'fallback'
+    });
+  }
+
+  try {
+    // 1. Ask Google Maps Geolocation API for lat/lng based on network/IP
+    const geoRes = await fetch(`${GEOLOCATE_API}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body || {})
+    });
+    const geoData: Record<string, any> = await geoRes.json();
+
+    let lat = geoData.location?.lat ?? 12.9716;
+    let lng = geoData.location?.lng ?? 77.5946;
+
+    // 2. Reverse Geocode via Google Maps to get human-readable location name
+    const revUrl = `${GEOCODE_API}?latlng=${lat},${lng}&key=${apiKey}`;
+    const revRes = await fetch(revUrl);
+    const revData: Record<string, any> = await revRes.json();
+
+    let city = 'Your Area';
+    if (revData.status === 'OK' && revData.results?.[0]) {
+      const components = revData.results[0].address_components || [];
+      const sublocality = components.find((c: any) => c.types.includes('sublocality') || c.types.includes('neighborhood'))?.long_name;
+      const locality = components.find((c: any) => c.types.includes('locality'))?.long_name;
+      city = [sublocality, locality].filter(Boolean).join(', ') || revData.results[0].formatted_address;
+    }
+
+    return res.json({
+      latitude: lat,
+      longitude: lng,
+      city,
+      source: 'google_maps'
+    });
+  } catch (err: any) {
+    console.error('Google Geolocation error:', err.message);
+    return res.json({
+      latitude: 12.9716,
+      longitude: 77.5946,
+      city: 'Bengaluru',
+      source: 'fallback'
+    });
+  }
+});
+
+// ─── GET /api/pharmacies/geocode (Google Maps Geocoding API) ─────────────────
+
+pharmaciesRouter.get('/geocode', async (req: Request, res: Response) => {
+  const address = String(req.query.address || '');
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+
+  if (!apiKey || !address) {
+    return res.status(400).json({ error: 'Address and API key required' });
+  }
+
+  try {
+    const url = `${GEOCODE_API}?address=${encodeURIComponent(address)}&key=${apiKey}`;
+    const r = await fetch(url);
+    const json: Record<string, any> = await r.json();
+
+    if (json.status !== 'OK' || !json.results?.[0]) {
+      return res.status(404).json({ error: 'Location not found via Google Maps' });
+    }
+
+    const loc = json.results[0].geometry.location;
+    return res.json({
+      latitude: loc.lat,
+      longitude: loc.lng,
+      formattedAddress: json.results[0].formatted_address
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/pharmacies ─────────────────────────────────────────────────────
 
 pharmaciesRouter.get('/', async (req: Request, res: Response) => {
@@ -85,7 +170,6 @@ pharmaciesRouter.get('/', async (req: Request, res: Response) => {
   }
 
   try {
-    // Search for pharmacies AND hospitals/clinics near the user
     const types = ['pharmacy', 'hospital', 'doctor', 'drugstore'];
     const allResults: Record<string, any>[] = [];
 
@@ -117,7 +201,6 @@ pharmaciesRouter.get('/', async (req: Request, res: Response) => {
       return res.json(mockData.pharmacies);
     }
 
-    // De-duplicate by place_id, sort by distance
     const seen = new Set<string>();
     const unique = allResults.filter((p) => {
       if (seen.has(p.place_id)) return false;
@@ -128,7 +211,7 @@ pharmaciesRouter.get('/', async (req: Request, res: Response) => {
     const formatted = unique
       .map((p) => formatPlacesResult(p, lat, lng, query))
       .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
-      .slice(0, 12); // cap at 12 results
+      .slice(0, 12);
 
     console.log(`✅ Google Places returned ${formatted.length} nearby medical places for query "${query}"`);
     return res.json(formatted);

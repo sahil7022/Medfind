@@ -51,6 +51,28 @@ export interface ReservationRequest {
 // ─── API client ───────────────────────────────────────────────────────────────
 
 export const apiService = {
+  /** Access user location via Google Maps Geolocation API */
+  async geolocateWithGoogleMaps(): Promise<{ latitude: number; longitude: number; city: string; source: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/pharmacies/geolocate`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('API error in Google Maps Geolocation:', e);
+    }
+    return { latitude: 12.9716, longitude: 77.5946, city: 'Bengaluru', source: 'fallback' };
+  },
+
+  /** Geocode address to lat/lng via Google Maps Geocoding API */
+  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number; formattedAddress: string } | null> {
+    try {
+      const res = await fetch(`${API_BASE}/pharmacies/geocode?address=${encodeURIComponent(address)}`);
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('API error in Geocoding address:', e);
+    }
+    return null;
+  },
+
   /** Search pharmacies / clinics near a location via Google Places */
   async getPharmacies(medicine: string, lat?: number, lng?: number): Promise<Pharmacy[]> {
     try {
