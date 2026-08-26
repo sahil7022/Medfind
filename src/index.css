@@ -27,3 +27,31 @@
 .animate-pulse-glow {
   animation: pulseGlow 2s infinite;
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Custom sleek Chat Viewport Scrollbar */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 9999px;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.6);
+  border-radius: 9999px;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
+}
+
