@@ -53,24 +53,22 @@ export interface ReservationRequest {
 export const apiService = {
   /** Access user location via Google Maps Geolocation API */
   async geolocateWithGoogleMaps(): Promise<{ latitude: number; longitude: number; city: string; source: string }> {
-    try {
-      const res = await fetch(`${API_BASE}/pharmacies/geolocate`, { method: 'POST' });
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn('API error in Google Maps Geolocation:', e);
+    const res = await fetch(`${API_BASE}/pharmacies/geolocate`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to geolocate');
     }
-    return { latitude: 12.9716, longitude: 77.5946, city: 'Bengaluru', source: 'fallback' };
+    return data;
   },
 
   /** Geocode address to lat/lng via Google Maps Geocoding API */
-  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number; formattedAddress: string } | null> {
-    try {
-      const res = await fetch(`${API_BASE}/pharmacies/geocode?address=${encodeURIComponent(address)}`);
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn('API error in Geocoding address:', e);
+  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number; formattedAddress: string }> {
+    const res = await fetch(`${API_BASE}/pharmacies/geocode?address=${encodeURIComponent(address)}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to geocode address');
     }
-    return null;
+    return data;
   },
 
   /** Search pharmacies / clinics near a location via Google Places */

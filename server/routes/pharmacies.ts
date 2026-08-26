@@ -91,6 +91,10 @@ pharmaciesRouter.post('/geolocate', async (req: Request, res: Response) => {
     });
     const geoData: Record<string, any> = await geoRes.json();
 
+    if (geoData.error) {
+       return res.status(400).json({ error: geoData.error.message || 'Google Geolocation API Error' });
+    }
+
     let lat = geoData.location?.lat ?? 12.9716;
     let lng = geoData.location?.lng ?? 77.5946;
 
@@ -115,12 +119,7 @@ pharmaciesRouter.post('/geolocate', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('Google Geolocation error:', err.message);
-    return res.json({
-      latitude: 12.9716,
-      longitude: 77.5946,
-      city: 'Bengaluru',
-      source: 'fallback'
-    });
+    return res.status(500).json({ error: err.message });
   }
 });
 
@@ -139,7 +138,11 @@ pharmaciesRouter.get('/geocode', async (req: Request, res: Response) => {
     const r = await fetch(url);
     const json: Record<string, any> = await r.json();
 
-    if (json.status !== 'OK' || !json.results?.[0]) {
+    if (json.status !== 'OK') {
+      return res.status(400).json({ error: json.error_message || `Google API Error: ${json.status}` });
+    }
+    
+    if (!json.results?.[0]) {
       return res.status(404).json({ error: 'Location not found via Google Maps' });
     }
 

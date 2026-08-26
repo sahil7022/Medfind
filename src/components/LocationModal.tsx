@@ -44,7 +44,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       onToast(`📍 Location set to: ${loc.city}`);
       onClose();
     } catch (e: any) {
-      setErrorMsg('Failed to detect via Google Maps. Please type your city below.');
+      setErrorMsg(e.message || 'Failed to detect via Google Maps. Please type your city below.');
     } finally {
       setIsGeolocating(false);
     }
@@ -58,9 +58,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     setErrorMsg('');
     onToast(`Searching Google Maps for "${searchInput}"...`);
 
-    const result = await apiService.geocodeAddress(searchInput.trim());
-
-    if (result) {
+    try {
+      const result = await apiService.geocodeAddress(searchInput.trim());
       onSelectLocation({
         latitude: result.latitude,
         longitude: result.longitude,
@@ -68,10 +67,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       });
       onToast(`📍 Location updated to: ${result.formattedAddress}`);
       onClose();
-    } else {
-      setErrorMsg(`Could not find "${searchInput}" on Google Maps. Try another city or locality.`);
+    } catch (e: any) {
+      setErrorMsg(e.message || `Could not find "${searchInput}" on Google Maps. Try another city or locality.`);
+    } finally {
+      setIsSearching(false);
     }
-    setIsSearching(false);
   };
 
   const handleSelectCity = (city: { name: string; lat: number; lng: number }) => {
