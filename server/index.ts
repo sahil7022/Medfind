@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { pharmaciesRouter } from './routes/pharmacies.js';
 import { inventoryRouter } from './routes/inventory.js';
 import { reservationsRouter } from './routes/reservations.js';
+import { aiRouter } from './routes/ai.js';
 
 dotenv.config();
 
@@ -32,6 +33,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/pharmacies', pharmaciesRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/reservations', reservationsRouter);
+app.use('/api/ai', aiRouter);
+
 
 // Unknown API routes → JSON 404 (never the SPA)
 app.use('/api', (req, res) => {

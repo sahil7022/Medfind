@@ -10,11 +10,15 @@ import { InventoryManager } from './components/InventoryManager';
 import { QueueManager } from './components/QueueManager';
 import { ReserveModal } from './components/ReserveModal';
 import { ClinicPanel } from './components/ClinicPanel';
+import { SymptomCheckerModal } from './components/SymptomCheckerModal';
+import { Bot, Sparkles } from 'lucide-react';
 import { apiService, Pharmacy, InventoryItem, ReservationRequest } from './services/api';
 import { getCurrentUserLocation, LocationCoordinates } from './services/geo';import { onAuthChange, loginWithEmail, registerWithEmail, loginWithGoogle, logoutUser } from './firebase';
 
 export const App: React.FC = () => {
   const [activeScreen, setActiveScreen] = useState('userView');
+  const [isSymptomCheckerOpen, setIsSymptomCheckerOpen] = useState(false);
+
   const [clinicPanelOpen, setClinicPanelOpen] = useState(false);
   const [clinicId, setClinicId] = useState('clinic-1');
   const [clinicName, setClinicName] = useState('CityCare Pharmacy');
@@ -170,7 +174,9 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         locationCity={location.city || 'Bengaluru'}
         onDetectLocation={handleDetectLocation}
+        onOpenSymptomChecker={() => setIsSymptomCheckerOpen(true)}
       />
+
 
       <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full">
         {/* Animated screen transitions via Framer Motion */}
@@ -483,6 +489,39 @@ export const App: React.FC = () => {
         onToast={showToast}
       />
 
+      {/* Multilingual Gemini AI Symptom Checker Chatbot Modal */}
+      <SymptomCheckerModal
+        isOpen={isSymptomCheckerOpen}
+        onClose={() => setIsSymptomCheckerOpen(false)}
+        onSearchMedicine={(medName) => {
+          handleSearch(medName);
+          showToast(`Searching for "${medName}" near you...`);
+        }}
+      />
+
+      {/* Floating Action Button for AI Doctor */}
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+        className="fixed bottom-6 right-6 z-40"
+      >
+        <motion.button
+          onClick={() => setIsSymptomCheckerOpen(true)}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.92 }}
+          className="group relative flex items-center gap-2.5 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-[#173d57] to-[#235274] text-white font-bold text-xs shadow-2xl shadow-emerald-950/40 border border-emerald-400/40 cursor-pointer"
+        >
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400" />
+          </span>
+          <Bot size={18} className="text-emerald-300 group-hover:rotate-12 transition-transform" />
+          <span>AI Symptom Checker</span>
+          <Sparkles size={13} className="text-amber-300 animate-pulse" />
+        </motion.button>
+      </motion.div>
+
       {/* Animated Toast Notification */}
       <AnimatePresence>
         {toastMsg && (
@@ -492,7 +531,7 @@ export const App: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-            className="fixed right-6 bottom-6 bg-slate-900 text-white text-xs font-semibold px-5 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-2"
+            className="fixed right-6 bottom-24 bg-slate-900 text-white text-xs font-semibold px-5 py-3 rounded-xl shadow-2xl z-50 flex items-center gap-2"
           >
             <motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 0.4 }}>✓</motion.span>
             {toastMsg}
@@ -502,3 +541,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+

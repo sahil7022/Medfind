@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User } from 'firebase/auth';
-import { Search, Bookmark, Store, MapPin, User as UserIcon } from 'lucide-react';
+import { Search, Bookmark, Store, MapPin, User as UserIcon, Bot, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   activeScreen: string;
@@ -9,7 +9,9 @@ interface HeaderProps {
   currentUser: User | null;
   locationCity: string;
   onDetectLocation: () => void;
+  onOpenSymptomChecker?: () => void;
 }
+
 
 const navItems = [
   { id: 'userView', label: 'Find Medicine', icon: Search },
@@ -18,8 +20,9 @@ const navItems = [
   { id: 'clinicView', label: 'Clinic Panel', icon: MapPin },
 ];
 
+
 export const Header: React.FC<HeaderProps> = ({
-  activeScreen, setActiveScreen, currentUser, locationCity, onDetectLocation
+  activeScreen, setActiveScreen, currentUser, locationCity, onDetectLocation, onOpenSymptomChecker
 }) => {
   return (
     <motion.header
@@ -50,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
       </motion.div>
 
       {/* Nav */}
-<nav className="hidden md:flex gap-1 flex-1 max-w-md">
+      <nav className="hidden md:flex gap-1 flex-1 max-w-md">
         {navItems.map(({ id, label, icon: Icon }, idx) => {
           const isClinic = id === 'clinicView';
           return (
@@ -83,6 +86,19 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right controls */}
       <div className="flex items-center gap-3">
+        {onOpenSymptomChecker && (
+          <motion.button
+            onClick={onOpenSymptomChecker}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-[#173d57] text-white text-xs font-bold shadow-md shadow-emerald-600/20 border border-emerald-400/30 transition-all"
+          >
+            <Bot size={15} />
+            <span>AI Doctor</span>
+            <Sparkles size={11} className="text-amber-300" />
+          </motion.button>
+        )}
+
         <motion.span
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
